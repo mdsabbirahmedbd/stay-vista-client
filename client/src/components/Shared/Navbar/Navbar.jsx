@@ -4,10 +4,59 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import useAuth from '../../../hooks/useAuth'
 import avatarImg from '../../../assets/images/placeholder.jpg'
+import HostModal from '../../modal/HostRequstModel'
+import { useMutation } from '@tanstack/react-query'
+import useAxiosSecure from '../../../hooks/useAxiosSecure'
+import toast from 'react-hot-toast'
+import useRole from '../../../hooks/useRole'
+
 
 const Navbar = () => {
+  const axiosSecure = useAxiosSecure()
   const { user, logOut } = useAuth()
+  const [role] = useRole()
   const [isOpen, setIsOpen] = useState(false)
+
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const closeModal = () => {
+    setIsModalOpen(false)
+  }
+
+
+  const {mutateAsync} = useMutation({
+    mutationFn: async (requstUser) => {
+      const {data} = await axiosSecure.put('/user',requstUser);
+      return data;
+    }
+  })
+
+   const modalHandler  = async () => {
+      try{
+        const currentUser = {
+          email : user?.email,
+          role : 'guest',
+          status : 'Requested',
+         }; 
+             const  result =  await mutateAsync(currentUser)
+             if(result.modifiedCount > 0) {
+                toast.success("Successfully! Please wait for admin confirmation")
+             }
+             else{
+              toast.error("Please wait for admin approval");
+             }
+         
+      }catch(error) {
+        console.log(error)
+      }finally{
+        closeModal()
+      }
+   }
+          
+
+
+   
+  
 
   return (
     <div className='fixed w-full bg-white z-10 shadow-sm'>
@@ -29,15 +78,16 @@ const Navbar = () => {
               <div className='flex flex-row items-center gap-3'>
                 {/* Become A Host btn */}
                 <div className='hidden md:block'>
-                  {!user && (
+                  {(user && role == "guest" &&
                     <button
-                      disabled={!user}
+                      onClick={()=>setIsModalOpen(true)}
+                      // disabled={!user}
                       className='disabled:cursor-not-allowed cursor-pointer hover:bg-neutral-100 py-3 px-4 text-sm font-semibold rounded-full  transition'
                     >
                       Host your home
-                    </button>
-                  )}
+                    </button> )} 
                 </div>
+              <HostModal closeModal={closeModal} isOpen={isModalOpen} modalHandler={modalHandler}></HostModal>
                 {/* Dropdown btn */}
                 <div
                   onClick={() => setIsOpen(!isOpen)}
@@ -57,6 +107,7 @@ const Navbar = () => {
                   </div>
                 </div>
               </div>
+              
               {isOpen && (
                 <div className='absolute rounded-xl shadow-md w-[40vw] md:w-[10vw] bg-white overflow-hidden right-0 top-12 text-sm'>
                   <div className='flex flex-col cursor-pointer'>
@@ -69,12 +120,18 @@ const Navbar = () => {
 
                     {user ? (
                       <>
+                        <Link className='px-4 py-3 hover:bg-neutral-100 transition font-semibold cursor-pointer' to='/dashboard'>
+                          Dashboard
+                        </Link>
+
+
                         <div
                           onClick={logOut}
                           className='px-4 py-3 hover:bg-neutral-100 transition font-semibold cursor-pointer'
                         >
                           Logout
                         </div>
+
                       </>
                     ) : (
                       <>
